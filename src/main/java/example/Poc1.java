@@ -88,19 +88,20 @@ public class Poc1 {
         public Iterable<Relationship> expand(Path path, BranchState<Double> branchState) {
             Iterable<Relationship> relationships = path.endNode().getRelationships(Direction.INCOMING);
             double influx = 0.0;
+            double bstate = 1.0;
             for (Relationship relationship : relationships) {
-                influx += (double) relationship.getProperty("value");
+                influx += (double) relationship.getProperty("amount");
             }
 
             if (path.lastRelationship() == null) {
-                branchState.setState(1.0);
+                bstate = 1.0;
+                branchState.setState(bstate);
             } else {
-                double bstate = branchState.getState();
+                bstate = branchState.getState();
                 double amount = (double) path.lastRelationship().getProperty("amount");
                 bstate = bstate * amount / influx;
                 branchState.setState(bstate);
             }
-            double bstate = branchState.getState();
 
             ArrayList<Relationship> filtered = new ArrayList<>();
             for (Relationship r : relationships) {
