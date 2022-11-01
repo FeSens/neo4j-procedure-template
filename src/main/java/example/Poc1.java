@@ -58,7 +58,7 @@ public class Poc1 {
             @Name("minContribution") Double minContribution,
             @Name("endNodeLabel") String endNodeLabel) {
 
-        Node address = tx.findNode(ADDRESS, "address", walletAddress);
+        Node address = tx.findNode(ADDRESS, "hash", walletAddress);
 
         final Traverser traverse = tx.traversalDescription()
                 .expand(new MinContributionPathExpander(minContribution), InitialBranchState.DOUBLE_ZERO)
@@ -94,7 +94,6 @@ public class Poc1 {
             }
 
             if (path.lastRelationship() == null) {
-                bstate = 1.0;
                 branchState.setState(bstate);
             } else {
                 bstate = branchState.getState();
