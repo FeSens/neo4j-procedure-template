@@ -115,9 +115,10 @@ public class Poc1 {
                         * (double) path.lastRelationship().getProperty("amount")
                         / state.get(lastNodeHash).get("influx");
 
-                log.info("contribution: " + state.get(lastNodeHash).get("contribution") + " new contribution: "
-                        + contribution
-                        + " node: " + path.endNode().getProperty("hash"));
+                // log.info("contribution: " + state.get(lastNodeHash).get("contribution") + "
+                // new contribution: "
+                // + contribution
+                // + " node: " + path.endNode().getProperty("hash"));
 
                 state.get(currentNoteHash).put("contribution", contribution);
             }
@@ -131,17 +132,17 @@ public class Poc1 {
                     filtered.add(r);
                 }
             }
-            if (path.lastRelationship() != null) {
-                log.info("contribution: " + contribution + " hash: "
-                        + path.endNode().getProperty("hash")
-                        + " amount: " + path.lastRelationship().getProperty("amount")
-                        + " influx: " + currInflux
-                        + " lastInflux: " + state.get(lastNodeHash).get("influx"));
-            } else {
-                log.info("contribution: " + contribution + " hash: "
-                        + path.endNode().getProperty("hash")
-                        + " influx: " + currInflux);
-            }
+            // if (path.lastRelationship() != null) {
+            // log.info("contribution: " + contribution + " hash: "
+            // + path.endNode().getProperty("hash")
+            // + " amount: " + path.lastRelationship().getProperty("amount")
+            // + " influx: " + currInflux
+            // + " lastInflux: " + state.get(lastNodeHash).get("influx"));
+            // } else {
+            // log.info("contribution: " + contribution + " hash: "
+            // + path.endNode().getProperty("hash")
+            // + " influx: " + currInflux);
+            // }
 
             state.get(currentNoteHash).put("influx", currInflux);
             branchState.setState(state);
@@ -199,7 +200,7 @@ public class Poc1 {
 
         @Override
         public Evaluation evaluate(Path path) {
-            if (path.endNode().hasLabel(label)) {
+            if (path.endNode().hasLabel(label) && path.length() > 0) {
                 return Evaluation.INCLUDE_AND_PRUNE;
             } else {
                 return Evaluation.INCLUDE_AND_CONTINUE;
