@@ -1,6 +1,7 @@
 package example;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
@@ -61,8 +62,14 @@ public class Poc1 {
         Node address = tx.findNode(ADDRESS, "hash", walletAddress);
 
         final Traverser traverse = tx.traversalDescription()
-                .expand(new MinContributionPathExpander(minContribution), InitialBranchState.DOUBLE_ZERO)
                 .depthFirst()
+                .expand(new MinContributionPathExpander(minContribution),
+                        new InitialBranchState<HashMap<String, HashMap<String, Double>>>() {
+                            @Override
+                            public HashMap<String, HashMap<String, Double>> initialState(Path path) {
+                                return new HashMap<String, HashMap<String, Double>>();
+                            }
+                        })
                 .evaluator(new LabelEvaluator(endNodeLabel))
                 .uniqueness(Uniqueness.RELATIONSHIP_PATH)
                 .traverse(address);
@@ -76,8 +83,7 @@ public class Poc1 {
     /**
      * Expand only paths with relevant amounts
      */
-    public static final class MinContributionPathExpander implements PathExpander<Double> {
-
+    public final class MinContributionPathExpander implements PathExpander<HashMap<String, HashMap<String, Double>>> {
         private final double minContribution;
 
         public MinContributionPathExpander(double minContribution) {
@@ -85,30 +91,60 @@ public class Poc1 {
         }
 
         @Override
-        public Iterable<Relationship> expand(Path path, BranchState<Double> branchState) {
+        public Iterable<Relationship> expand(Path path,
+                BranchState<HashMap<String, HashMap<String, Double>>> branchState) {
             Iterable<Relationship> relationships = path.endNode().getRelationships(Direction.INCOMING);
-            double influx = 0.0;
-            double bstate = 1.0;
+            HashMap<String, HashMap<String, Double>> state = new HashMap<>();
+            String lastNodeHash;
+            String currentNoteHash = path.endNode().getProperty("hash").toString();
+
+            double currInflux = 0;
             for (Relationship relationship : relationships) {
-                influx += (double) relationship.getProperty("amount");
+                currInflux += (double) relationship.getProperty("amount");
+            }
+            if (path.lastRelationship() == null) {
+                lastNodeHash = currentNoteHash;
+                state.put(lastNodeHash, new HashMap<String, Double>());
+                state.get(lastNodeHash).put("contribution", 1.0);
+            } else {
+                lastNodeHash = path.lastRelationship().getOtherNode(path.endNode()).getProperty("hash").toString();
+                state = branchState.getState();
+                state.put(currentNoteHash, new HashMap<String, Double>());
+
+                double contribution = state.get(lastNodeHash).get("contribution")
+                        * (double) path.lastRelationship().getProperty("amount")
+                        / state.get(lastNodeHash).get("influx");
+
+                log.info("contribution: " + state.get(lastNodeHash).get("contribution") + " new contribution: "
+                        + contribution
+                        + " node: " + path.endNode().getProperty("hash"));
+
+                state.get(currentNoteHash).put("contribution", contribution);
             }
 
-            if (path.lastRelationship() == null) {
-                branchState.setState(bstate);
-            } else {
-                bstate = branchState.getState();
-                double amount = (double) path.lastRelationship().getProperty("amount");
-                bstate = bstate * amount / influx;
-                branchState.setState(bstate);
-            }
+            double contribution = state.get(currentNoteHash).get("contribution");
 
             ArrayList<Relationship> filtered = new ArrayList<>();
             for (Relationship r : relationships) {
-                double amount = (double) r.getProperty("amount");
-                if ((amount / influx) * bstate > this.minContribution) {
+                double currContribution = contribution * ((double) r.getProperty("amount") / currInflux);
+                if (currContribution >= minContribution) {
                     filtered.add(r);
                 }
             }
+            if (path.lastRelationship() != null) {
+                log.info("contribution: " + contribution + " hash: "
+                        + path.endNode().getProperty("hash")
+                        + " amount: " + path.lastRelationship().getProperty("amount")
+                        + " influx: " + currInflux
+                        + " lastInflux: " + state.get(lastNodeHash).get("influx"));
+            } else {
+                log.info("contribution: " + contribution + " hash: "
+                        + path.endNode().getProperty("hash")
+                        + " influx: " + currInflux);
+            }
+
+            state.get(currentNoteHash).put("influx", currInflux);
+            branchState.setState(state);
             return filtered;
         }
 
